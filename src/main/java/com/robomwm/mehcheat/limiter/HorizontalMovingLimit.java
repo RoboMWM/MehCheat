@@ -30,7 +30,7 @@ public class HorizontalMovingLimit extends Limiter implements Listener
         //getConfig().set("horizontal.fly", 1.3D);
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     private void onMove(PlayerMoveEvent event)
     {
         Location from = event.getFrom().clone();
@@ -50,8 +50,10 @@ public class HorizontalMovingLimit extends Limiter implements Listener
 
         from.setY(event.getFrom().getY());
 
+        boolean bad = bad(event, distanceSquared, from);
+
         if (getConfig().getBoolean("horizontal.cancel"))
-            event.setCancelled(bad(event, distanceSquared, from));
+            event.setCancelled(bad);
     }
 
     private boolean bad(PlayerMoveEvent event, double distanceSquared, Location from)

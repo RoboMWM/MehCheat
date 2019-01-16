@@ -1,0 +1,7 @@
+name: MehCheat
+author: RoboMWM
+version: ${project.version}
+main: com.robomwm.mehcheat.MehCheat
+api-version: 1.13
+commands:
+  psnc: {}

@@ -73,11 +73,11 @@ public class HorizontalMovingLimit extends Limiter implements Listener
         if (event.getPlayer().hasPotionEffect(PotionEffectType.SPEED))
             check += check * (0.2D * event.getPlayer().getPotionEffect(PotionEffectType.SPEED).getAmplifier());
 
-        if (distanceSquared > check)
+        if (distanceSquared > check && event.getPlayer().isSprinting())
         {
             //check for ice
-            from.setY(-1);
-            if (event.getPlayer().isSprinting() && from.getBlock().getType() == Material.ICE && distanceSquared < check + 1D)
+            from.add(0, -1, 0);
+            if (from.getBlock().getType() == Material.ICE && distanceSquared < check + 1D)
                 return false;
             addWarning(event.getPlayer(), event.getFrom(), distanceSquared, "normal," + from.getBlock().getType());
             return true;

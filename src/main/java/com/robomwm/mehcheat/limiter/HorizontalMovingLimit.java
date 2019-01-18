@@ -6,8 +6,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffectType;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created on 1/14/2019.
@@ -18,16 +22,26 @@ import org.bukkit.potion.PotionEffectType;
  */
 public class HorizontalMovingLimit extends Limiter implements Listener
 {
+    private Map<Player, Long> lastSprint = new HashMap<>();
+
     public HorizontalMovingLimit(Plugin plugin)
     {
-        super(plugin);
-        getConfig().addDefault("horizontal.cancel", false);
-        getConfig().addDefault("horizontal.normal", 0.5D);
-        getConfig().addDefault("horizontal.glide", 4.1D);
-        getConfig().addDefault("horizontal.swim", .08D);
+        super(plugin, "horizontal");
+        getConfig().addDefault("cancel", false);
+        getConfig().addDefault("walk", .085D);
+        getConfig().addDefault("sprint", 0.38D);
+        getConfig().addDefault("glide", 4.1D);
+        getConfig().addDefault("swim", .08D); //0.08
         saveConfig();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         //getConfig().set("horizontal.fly", 1.3D);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    private void onQuit(PlayerQuitEvent event)
+    {
+        resetWarningLevels(event.getPlayer());
+        lastSprint.remove(event.getPlayer());
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -40,7 +54,7 @@ public class HorizontalMovingLimit extends Limiter implements Listener
 
         try
         {
-            distanceSquared = event.getFrom().distanceSquared(event.getTo());
+            distanceSquared = from.distanceSquared(event.getTo());
         }
         catch (IllegalArgumentException e)
         {
@@ -54,6 +68,9 @@ public class HorizontalMovingLimit extends Limiter implements Listener
 
         if (getConfig().getBoolean("horizontal.cancel"))
             event.setCancelled(bad);
+
+        if (event.getPlayer().isSprinting())
+            lastSprint.put(event.getPlayer(), System.currentTimeMillis());
     }
 
     private boolean bad(PlayerMoveEvent event, double distanceSquared, Location from)
@@ -63,51 +80,63 @@ public class HorizontalMovingLimit extends Limiter implements Listener
             return handleGlide(event, distanceSquared);
         else if (player.isSwimming())
             return handleSwim(event, distanceSquared);
+        else if (player.isSprinting() || recentlySprinted(player))
+            return handleSprint(event, distanceSquared, from);
         else
-            return handleNormalMove(event, distanceSquared, from);
+            return handleWalk(event, distanceSquared);
     }
 
-    private boolean handleNormalMove(PlayerMoveEvent event, double distanceSquared, Location from)
+    private boolean recentlySprinted(Player player)
     {
-        double check = getConfig().getDouble("horizontal.normal");
+        Long sprint = lastSprint.get(player);
+        return sprint != null && sprint >= System.currentTimeMillis() - 2500L;
+    }
+
+    private boolean handleWalk(PlayerMoveEvent event, double distanceSquared)
+    {
+        String checkString = "walk";
+        double check = getConfig().getDouble(checkString);
         if (event.getPlayer().hasPotionEffect(PotionEffectType.SPEED))
             check += check * (0.2D * event.getPlayer().getPotionEffect(PotionEffectType.SPEED).getAmplifier());
 
-        if (distanceSquared > check && event.getPlayer().isSprinting())
+        return performCheck(event.getPlayer(), distanceSquared, check, event.getFrom(), checkString);
+    }
+
+    private boolean handleSprint(PlayerMoveEvent event, double distanceSquared, Location from)
+    {
+        String checkString = "sprint";
+        double check = getConfig().getDouble(checkString);
+        if (event.getPlayer().hasPotionEffect(PotionEffectType.SPEED))
+            check += check * (0.2D * event.getPlayer().getPotionEffect(PotionEffectType.SPEED).getAmplifier());
+
+        if (distanceSquared > check)
         {
             //check for ice
             from.add(0, -1, 0);
-            if (from.getBlock().getType() == Material.ICE && distanceSquared < check + 1D)
-                return false;
-            addWarning(event.getPlayer(), event.getFrom(), distanceSquared, "normal," + from.getBlock().getType());
-            return true;
+            if (from.getBlock().getType() == Material.ICE)
+                return addWarning(event.getPlayer(), distanceSquared, check + 1D, event.getFrom(), checkString + from.getBlock().getType());
+            return addWarning(event.getPlayer(), distanceSquared, check, event.getFrom(), checkString + from.getBlock().getType());
         }
         return false;
     }
 
     private boolean handleGlide(PlayerMoveEvent event, double distanceSquared)
     {
-        if (distanceSquared > getConfig().getDouble("horizontal.glide"))
-        {
-            addWarning(event.getPlayer(), event.getFrom(), distanceSquared, "gliding");
-            return true;
-        }
-        return false;
+        String checkString = "glide";
+        double check = getConfig().getDouble(checkString);
+        return performCheck(event.getPlayer(), distanceSquared, check, event.getFrom(), checkString);
     }
 
     private boolean handleSwim(PlayerMoveEvent event, double distanceSquared)
     {
-        if (distanceSquared > getConfig().getDouble("horizontal.swim"))
-        {
-            addWarning(event.getPlayer(), event.getFrom(), distanceSquared, "swimming");
-            return true;
-        }
-        return false;
+        String checkString = "swim";
+        double check = getConfig().getDouble(checkString);
+        return performCheck(event.getPlayer(), distanceSquared, check, event.getFrom(), checkString);
     }
 
-    private void handleFly(PlayerMoveEvent event, double distanceSquared)
-    {
-        if (distanceSquared > 1.3)
-            addWarning(event.getPlayer(), event.getFrom(), distanceSquared, "flying");
-    }
+//    private void handleFly(PlayerMoveEvent event, double distanceSquared)
+//    {
+//        if (distanceSquared > 1.3)
+//            addWarning(event.getPlayer(), distanceSquared, check, event.getFrom(), "flying");
+//    }
 }

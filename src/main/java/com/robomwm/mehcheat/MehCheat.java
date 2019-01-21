@@ -17,7 +17,8 @@ import java.util.List;
  */
 public class MehCheat extends JavaPlugin
 {
-    List<Limiter> limiters = new ArrayList<>(2);
+    private List<Limiter> limiters = new ArrayList<>(2);
+
     @Override
     public void onEnable()
     {

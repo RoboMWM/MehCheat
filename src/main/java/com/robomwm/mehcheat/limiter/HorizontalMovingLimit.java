@@ -113,8 +113,12 @@ public class HorizontalMovingLimit extends Limiter implements Listener
         {
             //check for ice
             from.add(0, -1, 0);
-            if (from.getBlock().getType() == Material.ICE)
-                return addWarning(event.getPlayer(), distanceSquared, check + 1D, event.getFrom(), checkString + from.getBlock().getType());
+            switch (from.getBlock().getType())
+            {
+                case ICE:
+                case PACKED_ICE:
+                    return addWarning(event.getPlayer(), distanceSquared, check + 1D, event.getFrom(), checkString + from.getBlock().getType());
+            }
             return addWarning(event.getPlayer(), distanceSquared, check, event.getFrom(), checkString + from.getBlock().getType());
         }
         return false;

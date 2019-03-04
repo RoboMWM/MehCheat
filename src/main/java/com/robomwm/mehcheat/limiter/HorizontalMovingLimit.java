@@ -69,7 +69,7 @@ public class HorizontalMovingLimit extends Limiter implements Listener
         if (getConfig().getBoolean("horizontal.cancel"))
             event.setCancelled(bad);
 
-        if (event.getPlayer().isSprinting())
+        if (event.getPlayer().isSprinting() || event.getPlayer().isSwimming()) //surfacing has a weird velocity bump
             lastSprint.put(event.getPlayer(), System.currentTimeMillis());
     }
 
